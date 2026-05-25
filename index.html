@@ -1698,47 +1698,55 @@ async function analyzePhoto(dataUrl) {
   resultEl.style.display = 'none';
   statusEl.style.display = 'block';
   statusEl.style.color = '';
-  statusEl.innerHTML = '<span class="spin">⟳</span> Читаю текст с фото…';
+  statusEl.innerHTML = '<span class="spin">⟳</span> Анализирую фото…';
 
   try {
-    // Load Tesseract.js for OCR
-    if (!window.Tesseract) {
-      await new Promise((res, rej) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/5.1.0/tesseract.min.js';
-        s.onload = res; s.onerror = rej;
-        document.head.appendChild(s);
-      });
-    }
+    const base64 = dataUrl.split(',')[1];
+    const mediaType = dataUrl.split(';')[0].split(':')[1];
 
-    statusEl.innerHTML = '<span class="spin">⟳</span> Распознаю текст (10-20 сек)…';
-
-    const result = await Tesseract.recognize(dataUrl, 'rus+eng', {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          statusEl.innerHTML = `<span class="spin">⟳</span> Распознаю… ${Math.round(m.progress*100)}%`;
-        }
-      }
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 500,
+        system: `You analyze food photos, menu screenshots, or nutrition labels to extract КБЖУ.
+Return ONLY a raw JSON object, no markdown, no backticks, nothing else.
+Format: {"name":"название на русском","kcal":0,"protein":0,"fat":0,"carbs":0,"amount":100,"unit":"г","note":"заметка"}
+Rules:
+- Nutrition label (этикетка): extract exact values per 100g, amount=100
+- Menu/price tag with КБЖУ listed (e.g. "КБЖУ 245/8/7/37, 130 гр"): extract values for the whole portion, amount=portion weight
+- Food photo without numbers: estimate based on visible ingredients, amount=estimated portion
+- All numbers must be positive. name in Russian.`,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: 'Определи КБЖУ. Верни только JSON.' }
+          ]
+        }]
+      })
     });
 
-    const text = result.data.text;
-    statusEl.innerHTML = '<span class="spin">⟳</span> Анализирую данные…';
+    const data = await res.json();
+    if (data.type === 'error') throw new Error(data.error?.message);
 
-    const entry = parseNutritionText(text);
-    if (!entry) {
-      // OCR got text but couldn't parse — show manual form with OCR text pre-filled
-      statusEl.style.display = 'none';
-      openPhotoManual(text);
-      return;
-    }
+    const block = (data.content || []).find(b => b.type === 'text');
+    if (!block) throw new Error('Нет ответа');
 
+    const match = block.text.trim().match(/\{[\s\S]*?\}/);
+    if (!match) throw new Error('Не удалось разобрать');
+
+    const entry = JSON.parse(match[0]);
     pendingPhotoEntry = { ...entry, id: Date.now() };
     statusEl.style.display = 'none';
     showPhotoResult(entry);
 
   } catch(e) {
     statusEl.style.display = 'none';
-    openPhotoManual('');
+    statusEl.style.color = '#C62828';
+    statusEl.innerHTML = '❌ ' + e.message;
+    statusEl.style.display = 'block';
   }
 }
 
