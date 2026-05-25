@@ -1712,12 +1712,14 @@ async function analyzePhoto(dataUrl) {
         max_tokens: 500,
         system: `You analyze food photos, menu screenshots, or nutrition labels to extract КБЖУ.
 Return ONLY a raw JSON object, no markdown, no backticks, nothing else.
+
+CRITICAL RULE about values interpretation:
+- If you see a NUTRITION LABEL (этикетка на упаковке) with "на 100г" or "per 100g" — values are per 100g, set amount=100
+- If you see a PRICE TAG or MENU with format like "КБЖУ 245/8/7/37, 130 гр" or "245 ккал, 130г" — these are TOTAL values for the whole portion. Set kcal/protein/fat/carbs to these exact numbers, amount = the portion weight shown (e.g. 130). Do NOT recalculate.
+- If you see a food PHOTO without numbers — estimate total for a typical portion, amount = estimated grams
+
 Format: {"name":"название на русском","kcal":0,"protein":0,"fat":0,"carbs":0,"amount":100,"unit":"г","note":"заметка"}
-Rules:
-- Nutrition label (этикетка): extract exact values per 100g, amount=100
-- Menu/price tag with КБЖУ listed (e.g. "КБЖУ 245/8/7/37, 130 гр"): extract values for the whole portion, amount=portion weight
-- Food photo without numbers: estimate based on visible ingredients, amount=estimated portion
-- All numbers must be positive. name in Russian.`,
+All numbers positive. name in Russian.`,
         messages: [{
           role: 'user',
           content: [
