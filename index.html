@@ -1191,7 +1191,38 @@ let state = { log:{}, activeDay: getTodayKey() };
 
 function getTodayKey(){ return new Date().toISOString().split('T')[0]; }
 function formatDate(d){ return new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}); }
-function loadState(){ try{ state.log=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); }catch{state.log={};} }
+function loadState(){
+  try{ state.log=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}'); }catch{state.log={};}
+  try{
+    const custom = JSON.parse(localStorage.getItem('kbju_custom_db')||'[]');
+    custom.forEach(item => DB.push(item));
+  }catch{}
+}
+
+function saveCustomItem(entry) {
+  // entry has name, kcal, protein, fat, carbs, amount, unit
+  // Store per-100g in custom DB
+  const factor = 100 / (entry.amount || 100);
+  const item = {
+    n: entry.name,
+    k: Math.round(entry.kcal * factor),
+    p: Math.round(entry.protein * factor * 10) / 10,
+    f: Math.round(entry.fat * factor * 10) / 10,
+    c: Math.round(entry.carbs * factor * 10) / 10,
+    tags: entry.name.toLowerCase().split(/\s+/).filter(w => w.length > 2),
+    portions: [{l: `1 порция (${entry.amount||100}${entry.unit||'г'})`, g: entry.amount||100}],
+    custom: true
+  };
+  try {
+    const existing = JSON.parse(localStorage.getItem('kbju_custom_db')||'[]');
+    // Don't duplicate
+    if (!existing.find(e => e.n.toLowerCase() === item.n.toLowerCase())) {
+      existing.push(item);
+      localStorage.setItem('kbju_custom_db', JSON.stringify(existing));
+      DB.push(item);
+    }
+  } catch{}
+}
 function saveState(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(state.log)); }
 function getEntries(){ return state.log[state.activeDay]||[]; }
 
@@ -1315,6 +1346,7 @@ function saveManual() {
   const entry = { name, kcal, protein, fat, carbs, amount, unit:'г', id:Date.now() };
   if (!state.log[state.activeDay]) state.log[state.activeDay]=[];
   state.log[state.activeDay].push(entry);
+  saveCustomItem(entry);
   saveState();
   hideManual();
   document.getElementById('foodInput').value='';
@@ -1660,6 +1692,7 @@ function confirmVoiceAdd() {
   if (!pendingVoiceEntry) return;
   if (!state.log[state.activeDay]) state.log[state.activeDay] = [];
   state.log[state.activeDay].push(pendingVoiceEntry);
+  saveCustomItem(pendingVoiceEntry);
   saveState(); render();
   toggleVoicePanel();
   resetVoice();
@@ -1849,6 +1882,7 @@ function confirmPhotoAdd() {
   if (!pendingPhotoEntry) return;
   if (!state.log[state.activeDay]) state.log[state.activeDay] = [];
   state.log[state.activeDay].push(pendingPhotoEntry);
+  saveCustomItem(pendingPhotoEntry);
   saveState();
   render();
   document.getElementById('photoPanel').style.display = 'none';
