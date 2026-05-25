@@ -1357,7 +1357,7 @@ function updateAmount(id,val){
   const num=parseFloat(val);
   if(isNaN(num)||num<=0)return;
   (state.log[state.activeDay]||[]).forEach(e=>{ if(e.id===id) e.amount=num; });
-  saveState(); renderTotals(); renderEntries();
+  saveState(); render();
 }
 function removeEntry(id){
   state.log[state.activeDay]=(state.log[state.activeDay]||[]).filter(e=>e.id!==id);
@@ -1366,7 +1366,7 @@ function removeEntry(id){
 
 function renderTotals(){
   const t=getEntries().reduce((a,e)=>{
-    const f=(e.amount||100)/100;
+    const f = e.perPortion ? 1 : (e.amount||100)/100;
     a.kcal+=e.kcal*f; a.protein+=e.protein*f; a.fat+=e.fat*f; a.carbs+=e.carbs*f; return a;
   },{kcal:0,protein:0,fat:0,carbs:0});
   document.getElementById('tKcal').textContent=Math.round(t.kcal);
@@ -1392,7 +1392,7 @@ function renderEntries(){
   }
   document.getElementById('sectionLabel').style.display = entries.length ? 'block' : 'none';
   el.innerHTML=entries.map(e=>{
-    const f=(e.amount||100)/100;
+    const f = e.perPortion ? 1 : (e.amount||100)/100;
     return `<div class="entry">
       <div style="flex:1;min-width:0">
         <div class="entry-name">${e.name}</div>
@@ -1428,6 +1428,9 @@ function switchDay(d){
   document.getElementById('dateLabel').textContent=formatDate(d);
   document.getElementById('suggestions').style.display='none';
   document.getElementById('manualForm').style.display='none';
+  document.getElementById('photoPanel').style.display='none';
+  document.getElementById('voicePanel').style.display='none';
+  document.getElementById('portionPicker').style.display='none';
   document.getElementById('status').textContent='';
   render();
 }
@@ -1460,7 +1463,7 @@ function renderAiHint() {
   if (entries.length === 0) { hintEl.style.display = 'none'; return; }
 
   const t = entries.reduce((a, e) => {
-    const f = (e.amount||100)/100;
+    const f = e.perPortion ? 1 : (e.amount||100)/100;
     a.kcal += e.kcal*f; a.protein += e.protein*f; a.fat += e.fat*f; a.carbs += e.carbs*f; return a;
   }, {kcal:0, protein:0, fat:0, carbs:0});
 
@@ -1664,7 +1667,7 @@ amount = total weight of the dish in grams. All values are TOTAL for the dish (n
     const match = block.text.trim().match(/\{[\s\S]*?\}/);
     if (!match) throw new Error('JSON не найден');
     const entry = JSON.parse(match[0]);
-    pendingVoiceEntry = { ...entry, id: Date.now() };
+    pendingVoiceEntry = { ...entry, perPortion: true, id: Date.now() };
     document.getElementById('voiceStatus').textContent = '';
     showVoiceResult(entry);
   } catch(e) {
@@ -1773,7 +1776,8 @@ All numbers positive. name in Russian.`,
     if (!match) throw new Error('Не удалось разобрать');
 
     const entry = JSON.parse(match[0]);
-    pendingPhotoEntry = { ...entry, id: Date.now() };
+    // Mark as per-portion so we don't multiply by amount/100 when displaying
+    pendingPhotoEntry = { ...entry, perPortion: true, id: Date.now() };
     statusEl.style.display = 'none';
     showPhotoResult(entry);
 
