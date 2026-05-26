@@ -1715,7 +1715,7 @@ async function handleSearch() {
 function renderSuggestions(items, fromFatSecret) {
   const sug = document.getElementById('suggestions');
   const badge = fromFatSecret
-    ? '<span style="font-size:10px;background:#EAF2FF;color:#1A73E8;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:6px">FatSecret</span>'
+    ? '<span style="font-size:10px;background:#E8F5E9;color:#2E7D32;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:6px">Open Food Facts</span>'
     : '';
   sug.innerHTML = (fromFatSecret
     ? `<div style="padding:8px 16px 4px;font-size:11px;color:var(--text-3);font-weight:600">Результаты из FatSecret${badge}</div>`
