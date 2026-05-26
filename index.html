@@ -423,6 +423,7 @@ input[type=text]:focus {
 .tag-p    { background: var(--blue-soft); color: var(--blue); }
 .tag-f    { background: var(--yellow-soft); color: #B25000; }
 .tag-c    { background: var(--green-soft); color: var(--green); }
+.tag-fi   { background: #F3EEFF; color: #7C3AED; }
 .entry-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .amount-pill-label {
   background: #F5F5F5;
@@ -741,6 +742,16 @@ input[type=number] {
     </div>
   </div>
 
+  <!-- AI hint -->
+  <div class="ai-hint" id="aiHint">
+    <div class="ai-hint-header">
+      <span class="ai-hint-icon">✦</span>
+      <span class="ai-hint-title">Совет на остаток дня</span>
+    </div>
+    <div class="ai-hint-text" id="aiHintText"></div>
+    <div class="ai-hint-chips" id="aiHintChips"></div>
+  </div>
+
   <!-- Search -->
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
@@ -820,16 +831,6 @@ input[type=number] {
       <button class="btn-save" onclick="saveManual()">Добавить</button>
       <button class="btn-cancel" onclick="hideManual()">Отмена</button>
     </div>
-  </div>
-
-  <!-- AI hint -->
-  <div class="ai-hint" id="aiHint">
-    <div class="ai-hint-header">
-      <span class="ai-hint-icon">✦</span>
-      <span class="ai-hint-title">Совет на остаток дня</span>
-    </div>
-    <div class="ai-hint-text" id="aiHintText"></div>
-    <div class="ai-hint-chips" id="aiHintChips"></div>
   </div>
 
   <!-- Voice button -->
@@ -1836,6 +1837,7 @@ function renderEntries(){
           <span class="tag tag-p">Б ${Math.round(e.protein*f)}</span>
           <span class="tag tag-f">Ж ${Math.round(e.fat*f)}</span>
           <span class="tag tag-c">У ${Math.round(e.carbs*f)}</span>
+          ${(e.fi||e.fiber) ? `<span class="tag tag-fi">К ${Math.round((e.fi||e.fiber)*f*10)/10}</span>` : ''}
         </div>
       </div>
       <div class="entry-right">
