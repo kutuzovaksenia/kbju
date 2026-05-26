@@ -1672,25 +1672,55 @@ function search(q) {
   return scored.slice(0,6).map(x => x.item);
 }
 
-function handleSearch() {
+async function handleSearch() {
   const q = document.getElementById('foodInput').value.trim();
   if (!q) return;
-  const results = search(q);
-  const sug = document.getElementById('suggestions');
   const status = document.getElementById('status');
-  if (results.length === 0) {
-    sug.style.display = 'none';
-    showManual(q);
-  } else {
+  const sug = document.getElementById('suggestions');
+
+  // 1. Local DB first
+  const localResults = search(q);
+  if (localResults.length > 0) {
     status.className = 'status';
     status.textContent = '';
-    renderSuggestions(results);
+    renderSuggestions(localResults, false);
+    return;
+  }
+
+  // 2. FatSecret fallback
+  sug.style.display = 'none';
+  status.className = 'status';
+  status.innerHTML = '<span class="spin">⟳</span> Ищу в FatSecret…';
+
+  try {
+    const res = await fetch('/api/fatsecret', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: q })
+    });
+    const data = await res.json();
+    status.textContent = '';
+    if (data.results && data.results.length > 0) {
+      renderSuggestions(data.results, true);
+    } else {
+      sug.style.display = 'none';
+      showManual(q);
+    }
+  } catch(e) {
+    status.textContent = '';
+    showManual(q);
   }
 }
 
-function renderSuggestions(items) {
+function renderSuggestions(items, fromFatSecret) {
   const sug = document.getElementById('suggestions');
-  sug.innerHTML = items.map(item =>
+  const badge = fromFatSecret
+    ? '<span style="font-size:10px;background:#EAF2FF;color:#1A73E8;border-radius:4px;padding:1px 5px;font-weight:700;margin-left:6px">FatSecret</span>'
+    : '';
+  sug.innerHTML = (fromFatSecret
+    ? `<div style="padding:8px 16px 4px;font-size:11px;color:var(--text-3);font-weight:600">Результаты из FatSecret${badge}</div>`
+    : '') +
+  items.map(item =>
     `<div class="suggestion" onclick='openPicker(${JSON.stringify(item)})'>
       <div class="sug-name">${item.n}</div>
       <div class="sug-meta">${item.k} ккал · Б ${item.p}г · Ж ${item.f}г · У ${item.c}г — на 100г</div>
@@ -1876,8 +1906,9 @@ function render(){ renderTabs(); renderWeekChart(); renderTotals(); renderEntrie
 document.getElementById('foodInput').addEventListener('input', e=>{
   const q=e.target.value.trim();
   if(!q){ document.getElementById('suggestions').style.display='none'; return; }
+  // Only local search on typing — FatSecret only on Enter/button
   const results=search(q);
-  if(results.length) renderSuggestions(results);
+  if(results.length) renderSuggestions(results, false);
   else document.getElementById('suggestions').style.display='none';
 });
 document.getElementById('foodInput').addEventListener('keydown',e=>{
