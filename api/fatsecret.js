@@ -9,7 +9,7 @@ export default async function handler(req, res) {
   if (!query) return res.status(400).json({ error: 'No query' });
 
   try {
-    // Step 1: Translate query to English via Claude
+    // Step 1: Translate to English
     const translateRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -20,14 +20,15 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 60,
-        system: 'Translate this Russian food/product name to English for a food database search. Return ONLY the English translation, nothing else. Keep brand names as-is.',
+        system: 'Translate this Russian food name to English (2-4 words max). Return ONLY the translation.',
         messages: [{ role: 'user', content: query }]
       })
     });
     const translateData = await translateRes.json();
     const englishQuery = translateData.content?.[0]?.text?.trim() || query;
+    console.log('englishQuery:', englishQuery);
 
-    // Step 2: Get FatSecret OAuth2 token
+    // Step 2: OAuth token
     const tokenRes = await fetch('https://oauth.fatsecret.com/connect/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -39,20 +40,34 @@ export default async function handler(req, res) {
       })
     });
     const token = await tokenRes.json();
-    if (!token.access_token) throw new Error('No token from FatSecret');
+    if (!token.access_token) throw new Error('No token');
 
-    // Step 3: Search foods
+    // Step 3: Search
     const searchRes = await fetch(
       `https://platform.fatsecret.com/rest/server.api?method=foods.search&search_expression=${encodeURIComponent(englishQuery)}&format=json&max_results=6`,
       { headers: { Authorization: `Bearer ${token.access_token}` } }
     );
     const data = await searchRes.json();
+    console.log('FatSecret raw:', JSON.stringify(data).slice(0, 500));
+
     const foods = data?.foods?.food;
-    if (!foods) return res.status(200).json({ results: [], translatedQuery: englishQuery });
+    if (!foods) {
+      // Try searching in Russian directly as fallback
+      const searchRes2 = await fetch(
+        `https://platform.fatsecret.com/rest/server.api?method=foods.search&search_expression=${encodeURIComponent(query)}&format=json&max_results=6`,
+        { headers: { Authorization: `Bearer ${token.access_token}` } }
+      );
+      const data2 = await searchRes2.json();
+      console.log('FatSecret RU raw:', JSON.stringify(data2).slice(0, 300));
+      if (!data2?.foods?.food) {
+        return res.status(200).json({ results: [], debug: { englishQuery, raw: JSON.stringify(data).slice(0,200) } });
+      }
+    }
 
     const list = Array.isArray(foods) ? foods : [foods];
+    console.log('First food item:', JSON.stringify(list[0]));
 
-    // Step 4: Translate names back to Russian via Claude
+    // Step 4: Translate names back to Russian
     const namesEn = list.map(f => f.food_name).join('\n');
     const namesRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -63,8 +78,8 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 200,
-        system: 'Translate these food product names from English to Russian. Return ONLY the translations, one per line, in the same order. Keep brand names as-is.',
+        max_tokens: 300,
+        system: 'Translate food product names from English to Russian. One per line, same order. Keep brand names as-is.',
         messages: [{ role: 'user', content: namesEn }]
       })
     });
@@ -73,6 +88,7 @@ export default async function handler(req, res) {
 
     const results = list.map((f, i) => {
       const desc = f.food_description || '';
+      console.log('desc:', desc);
       const kcal = parseFloat(desc.match(/Calories:\s*([\d.]+)/i)?.[1] || 0);
       const fat  = parseFloat(desc.match(/Fat:\s*([\d.]+)/i)?.[1] || 0);
       const carbs= parseFloat(desc.match(/Carbs:\s*([\d.]+)/i)?.[1] || 0);
@@ -89,8 +105,9 @@ export default async function handler(req, res) {
       };
     });
 
-    res.status(200).json({ results, translatedQuery: englishQuery });
+    res.status(200).json({ results, debug: { englishQuery } });
   } catch (e) {
+    console.error('Error:', e.message);
     res.status(500).json({ error: e.message });
   }
 }
