@@ -534,6 +534,12 @@ input[type=number] {
 .photo-result-label { color: var(--text-2); font-weight: 500; }
 .photo-result-val { font-weight: 700; color: var(--text); }
 .photo-result-actions { display: flex; gap: 8px; margin-top: 12px; }
+.photo-edit-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.photo-edit-label { font-size: 12px; font-weight: 600; color: var(--text-2); white-space: nowrap; min-width: 70px; }
+.photo-edit-input { background: #FAFAFA; border: 1.5px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 13px; color: var(--text); outline: none; font-family: inherit; width: 100%; }
+.photo-edit-input:focus { border-color: var(--border-focus); background: #fff; }
+.photo-edit-wide { flex: 1; }
+.photo-edit-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
 
 /* ── Week chart ── */
 .week-chart {
@@ -1110,6 +1116,151 @@ const DB = [
    portions:[{l:'1 ч. ложка (8г)',g:8},{l:'1 ст. ложка (25г)',g:25}]},
   {n:'Горький шоколад 70%',k:598,p:8,   f:43,  c:46,  tags:['шоколад','горький'], fi:10.9,
    portions:[{l:'1 долька (10г)',g:10},{l:'½ плитки (50г)',g:50},{l:'1 плитка (100г)',g:100}]},
+  // Киндер (Kinder)
+  {n:'Киндер Сюрприз', k:536, p:7.0, f:30, c:59, tags:['киндер','kinder','сюрприз','шоколад'],
+   portions:[{l:'1 яйцо (20г)',g:20}]},
+  {n:'Киндер Шоколад', k:569, p:8.5, f:34, c:57, tags:['киндер','kinder','шоколад'],
+   portions:[{l:'1 кубик (12.5г)',g:12.5},{l:'1 батончик (25г)',g:25},{l:'1 упаковка (100г)',g:100}]},
+  {n:'Киндер Буэно', k:568, p:8.5, f:35, c:54, tags:['киндер','kinder','буэно','bueno'],
+   portions:[{l:'1 батончик (21.5г)',g:21.5},{l:'2 батончика (43г)',g:43}]},
+  {n:'Киндер Буэно Белый', k:576, p:7.5, f:36, c:55, tags:['киндер','kinder','буэно','белый','белый шоколад'],
+   portions:[{l:'1 батончик (21.5г)',g:21.5},{l:'2 батончика (43г)',g:43}]},
+  {n:'Киндер Делис', k:451, p:6.5, f:22, c:56, tags:['киндер','kinder','делис','delice'],
+   portions:[{l:'1 штука (37г)',g:37}]},
+  {n:'Киндер Пингви', k:493, p:6.0, f:27, c:58, tags:['киндер','kinder','пингви','pingui'],
+   portions:[{l:'1 штука (30г)',g:30}]},
+  {n:'Киндер Молочный ломтик', k:357, p:8.5, f:13, c:52, tags:['киндер','kinder','молочный ломтик'],
+   portions:[{l:'1 штука (28г)',g:28}]},
+  {n:'Киндер Макси', k:553, p:8.0, f:32, c:58, tags:['киндер','kinder','макси'],
+   portions:[{l:'1 батончик (21г)',g:21},{l:'2 батончика (42г)',g:42}]},
+  {n:'Киндер Джой', k:546, p:7.5, f:31, c:60, tags:['киндер','kinder','джой','joy'],
+   portions:[{l:'1 штука (20г)',g:20}]},
+
+  // Завод Пастухова — зефир в шоколаде
+  {n:'Зефир молочный с ванилью в тёмном шоколаде (Пастухова)', k:470, p:3.2, f:20, c:67, tags:['зефир','пастухова','завод пастухова','ваниль','тёмный шоколад'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70},{l:'1 коробка (180г)',g:180}]},
+  {n:'Зефир молочный в натуральном бельгийском шоколаде (Пастухова)', k:510, p:3.5, f:26, c:63, tags:['зефир','пастухова','завод пастухова','бельгийский шоколад'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70},{l:'1 коробка (180г)',g:180}]},
+  {n:'Зефир молочный с варёной сгущёнкой в молочном шоколаде (Пастухова)', k:470, p:3.0, f:19, c:70, tags:['зефир','пастухова','сгущёнка','молочный шоколад'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70}]},
+  {n:'Зефир молочный с кофе в молочном шоколаде (Пастухова)', k:475, p:3.2, f:20, c:68, tags:['зефир','пастухова','кофе','молочный шоколад'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70}]},
+  {n:'Зефир молочный с клубникой в белом шоколаде (Пастухова)', k:468, p:2.8, f:19, c:69, tags:['зефир','пастухова','клубника','белый шоколад'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70}]},
+  {n:'Зефир молочный с манго в белом шоколаде (Пастухова)', k:465, p:2.8, f:19, c:69, tags:['зефир','пастухова','манго','белый шоколад'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70}]},
+  {n:'Зефир молочный с малиной в тёмном шоколаде (Пастухова)', k:468, p:3.0, f:20, c:67, tags:['зефир','пастухова','малина','тёмный шоколад'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70}]},
+  {n:'Зефир молочный с фисташкой (Пастухова)', k:480, p:4.0, f:21, c:66, tags:['зефир','пастухова','фисташка'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70}]},
+  {n:'Зефир молочный с черникой в белом шоколаде (Пастухова)', k:466, p:2.8, f:19, c:69, tags:['зефир','пастухова','черника','белый шоколад'],
+   portions:[{l:'1 штука (35г)',g:35},{l:'2 штуки (70г)',g:70}]},
+  {n:'Зефир молочный (Пастухова) без шоколада', k:299, p:2.8, f:16.8, c:34.2, tags:['зефир','пастухова','молочный'],
+   portions:[{l:'1 штука (30г)',g:30},{l:'2 штуки (60г)',g:60}]},
+  // Завод Пастухова — мармелад
+  {n:'Мармелад жевательный (Пастухова)', k:326, p:6.0, f:0.1, c:76, tags:['мармелад','пастухова','завод пастухова','жевательный'],
+   portions:[{l:'5 штук (30г)',g:30},{l:'1 пачка (80г)',g:80}]},
+  {n:'Мармелад фруктовый (Пастухова)', k:310, p:1.0, f:0.1, c:77, tags:['мармелад','пастухова','фруктовый'],
+   portions:[{l:'1 кусочек (20г)',g:20},{l:'5 кусочков (100г)',g:100}]},
+
+  // БМ Александров (сыры)
+  {n:'Сыр Российский (БМ Александров)', k:363, p:23, f:30, c:0, tags:['сыр','российский','александров','бм александров'],
+   portions:[{l:'1 ломтик (20г)',g:20},{l:'1 кусок (50г)',g:50},{l:'1 упаковка (200г)',g:200}]},
+  {n:'Сыр Голландский (БМ Александров)', k:352, p:26, f:26.5, c:0, tags:['сыр','голландский','александров','бм александров'],
+   portions:[{l:'1 ломтик (20г)',g:20},{l:'1 кусок (50г)',g:50}]},
+  {n:'Сыр Костромской (БМ Александров)', k:345, p:25, f:26, c:0, tags:['сыр','костромской','александров'],
+   portions:[{l:'1 ломтик (20г)',g:20},{l:'1 кусок (50г)',g:50}]},
+  {n:'Сыр Пошехонский (БМ Александров)', k:334, p:26, f:25, c:0, tags:['сыр','пошехонский','александров'],
+   portions:[{l:'1 ломтик (20г)',g:20},{l:'1 кусок (50г)',g:50}]},
+  {n:'Масло сливочное (БМ Александров) 82.5%', k:748, p:0.5, f:82.5, c:0.8, tags:['масло','сливочное','александров'],
+   portions:[{l:'1 ч. ложка (5г)',g:5},{l:'1 ст. ложка (15г)',g:15},{l:'1 пачка (180г)',g:180}]},
+
+  // Простоквашино (расширенный)
+  {n:'Молоко Простоквашино 2.5%', k:52, p:2.8, f:2.5, c:4.7, tags:['молоко','простоквашино'],
+   portions:[{l:'1 стакан (200мл)',g:200},{l:'1 пакет (1л)',g:1000}]},
+  {n:'Молоко Простоквашино 3.2%', k:59, p:2.9, f:3.2, c:4.7, tags:['молоко','простоквашино'],
+   portions:[{l:'1 стакан (200мл)',g:200},{l:'1 пакет (1л)',g:1000}]},
+  {n:'Кефир Простоквашино 1%', k:36, p:3.0, f:1.0, c:3.8, tags:['кефир','простоквашино'],
+   portions:[{l:'1 стакан (200мл)',g:200},{l:'1 бутылка (930мл)',g:930}]},
+  {n:'Кефир Простоквашино 2.5%', k:53, p:2.8, f:2.5, c:3.9, tags:['кефир','простоквашино'],
+   portions:[{l:'1 стакан (200мл)',g:200},{l:'1 бутылка (930мл)',g:930}]},
+  {n:'Сметана Простоквашино 15%', k:158, p:2.9, f:15, c:3.5, tags:['сметана','простоквашино'],
+   portions:[{l:'1 ст. ложка (25г)',g:25},{l:'1 упаковка (180г)',g:180}]},
+  {n:'Сметана Простоквашино 20%', k:205, p:2.8, f:20, c:3.7, tags:['сметана','простоквашино'],
+   portions:[{l:'1 ст. ложка (25г)',g:25},{l:'1 упаковка (180г)',g:180}]},
+  {n:'Творог Простоквашино 0%', k:66, p:16, f:0.1, c:1.2, tags:['творог','простоквашино'],
+   portions:[{l:'1 пачка (180г)',g:180},{l:'1 пачка (350г)',g:350}]},
+  {n:'Творог Простоквашино 4%', k:113, p:17, f:4.0, c:1.5, tags:['творог','простоквашино'],
+   portions:[{l:'1 пачка (180г)',g:180},{l:'1 пачка (350г)',g:350}]},
+  {n:'Творог Простоквашино 9%', k:159, p:16.7, f:9.0, c:2.0, tags:['творог','простоквашино'],
+   portions:[{l:'1 пачка (180г)',g:180},{l:'1 пачка (350г)',g:350}]},
+  {n:'Ряженка Простоквашино 2.5%', k:54, p:2.8, f:2.5, c:4.2, tags:['ряженка','простоквашино'],
+   portions:[{l:'1 стакан (200мл)',g:200},{l:'1 бутылка (400мл)',g:400}]},
+  {n:'Творожное зерно Простоквашино 4.5%', k:105, p:9.0, f:4.5, c:7.2, tags:['творожное зерно','простоквашино'],
+   portions:[{l:'1 упаковка (200г)',g:200},{l:'1 упаковка (350г)',g:350}]},
+  {n:'Сливки Простоквашино 10%', k:118, p:2.7, f:10, c:4.5, tags:['сливки','простоквашино'],
+   portions:[{l:'1 ст. ложка (15мл)',g:15},{l:'1 упаковка (200мл)',g:200}]},
+  {n:'Масло Простоквашино 72.5%', k:631, p:0.5, f:72.5, c:0.9, tags:['масло','сливочное','простоквашино'],
+   portions:[{l:'1 ч. ложка (5г)',g:5},{l:'1 ст. ложка (15г)',g:15},{l:'1 пачка (180г)',g:180}]},
+  {n:'Молоко Простоквашино топлёное 4%', k:67, p:2.8, f:4.0, c:4.7, tags:['молоко','топлёное','простоквашино'],
+   portions:[{l:'1 стакан (200мл)',g:200}]},
+
+  // Дополнительные ягоды
+  {n:'Ежевика', k:43, p:1.4, f:0.5, c:9.6, tags:['ежевика','ягоды'],
+   portions:[{l:'1 горсть (80г)',g:80},{l:'1 стакан (150г)',g:150}]},
+  {n:'Голубика', k:57, p:0.7, f:0.3, c:14.5, tags:['голубика','ягоды'],
+   portions:[{l:'1 горсть (80г)',g:80},{l:'1 стакан (150г)',g:150}]},
+  {n:'Земляника', k:41, p:0.8, f:0.4, c:9.5, tags:['земляника','ягоды'],
+   portions:[{l:'1 горсть (80г)',g:80}]},
+  {n:'Брусника', k:46, p:0.7, f:0.5, c:9.6, tags:['брусника','ягоды'],
+   portions:[{l:'1 горсть (80г)',g:80},{l:'1 стакан (150г)',g:150}]},
+  {n:'Клюква', k:46, p:0.5, f:0.2, c:12, tags:['клюква','ягоды'],
+   portions:[{l:'1 горсть (80г)',g:80}]},
+  {n:'Шиповник свежий', k:51, p:1.6, f:0.7, c:11, tags:['шиповник','ягоды'],
+   portions:[{l:'1 горсть (50г)',g:50}]},
+  {n:'Облепиха', k:82, p:1.2, f:5.4, c:9.2, tags:['облепиха','ягоды'],
+   portions:[{l:'1 горсть (80г)',g:80}]},
+  {n:'Инжир свежий', k:74, p:0.7, f:0.2, c:19, tags:['инжир','ягоды','фрукты'],
+   portions:[{l:'1 штука (40г)',g:40},{l:'3 штуки (120г)',g:120}]},
+  {n:'Финики', k:277, p:1.8, f:0.2, c:75, tags:['финики','сухофрукты'],
+   portions:[{l:'3 штуки (30г)',g:30},{l:'5 штук (50г)',g:50}]},
+  {n:'Чернослив', k:231, p:2.3, f:0.7, c:57, tags:['чернослив','сухофрукты'],
+   portions:[{l:'3 штуки (30г)',g:30},{l:'5 штук (50г)',g:50}]},
+  {n:'Курага', k:241, p:3.4, f:0.4, c:63, tags:['курага','сухофрукты'],
+   portions:[{l:'5 штук (40г)',g:40},{l:'10 штук (80г)',g:80}]},
+  {n:'Изюм', k:299, p:2.9, f:0.6, c:79, tags:['изюм','сухофрукты'],
+   portions:[{l:'1 горсть (30г)',g:30},{l:'2 горсти (60г)',g:60}]},
+
+  // Дополнительные овощи
+  {n:'Топинамбур', k:61, p:2.1, f:0.1, c:12.8, tags:['топинамбур','земляная груша'],
+   portions:[{l:'1 штука (80г)',g:80},{l:'3 штуки (240г)',g:240}]},
+  {n:'Репа', k:32, p:1.5, f:0.1, c:6.4, tags:['репа','овощи'],
+   portions:[{l:'1 средняя (150г)',g:150}]},
+  {n:'Патиссон', k:19, p:0.8, f:0.1, c:4.3, tags:['патиссон','овощи'],
+   portions:[{l:'1 штука (200г)',g:200}]},
+  {n:'Артишок', k:47, p:3.3, f:0.2, c:11, tags:['артишок','овощи'],
+   portions:[{l:'1 штука (120г)',g:120}]},
+  {n:'Пастернак', k:75, p:1.2, f:0.3, c:18, tags:['пастернак','овощи'],
+   portions:[{l:'1 штука (100г)',g:100}]},
+  {n:'Корень сельдерея', k:42, p:1.5, f:0.3, c:9.2, tags:['сельдерей','корень','овощи'],
+   portions:[{l:'½ штуки (100г)',g:100},{l:'1 целый (200г)',g:200}]},
+  {n:'Листовой салат', k:15, p:1.3, f:0.2, c:2.9, tags:['салат','листовой','зелень'],
+   portions:[{l:'1 горсть (30г)',g:30},{l:'1 большая порция (80г)',g:80}]},
+  {n:'Щавель', k:22, p:1.5, f:0.3, c:5.3, tags:['щавель','зелень'],
+   portions:[{l:'1 горсть (50г)',g:50}]},
+  {n:'Чеснок', k:149, p:6.4, f:0.5, c:33.1, tags:['чеснок','овощи'],
+   portions:[{l:'1 зубчик (5г)',g:5},{l:'3 зубчика (15г)',g:15}]},
+  {n:'Лук репчатый', k:41, p:1.4, f:0.2, c:10.4, tags:['лук','репчатый','лук репчатый'],
+   portions:[{l:'½ луковицы (50г)',g:50},{l:'1 луковица (100г)',g:100}]},
+  {n:'Лук-порей', k:61, p:1.5, f:0.3, c:14.2, tags:['лук','порей','лук-порей'],
+   portions:[{l:'1 стебель (80г)',g:80}]},
+  {n:'Имбирь свежий', k:80, p:1.8, f:0.8, c:17.8, tags:['имбирь'],
+   portions:[{l:'1 ч. ложка тёртого (5г)',g:5},{l:'1 кусочек (20г)',g:20}]},
+  {n:'Горошек зелёный свежий', k:73, p:5.4, f:0.4, c:13.8, tags:['горошек','зелёный горошек','овощи'],
+   portions:[{l:'1 ст. ложка (20г)',g:20},{l:'1 порция (80г)',g:80}]},
+  {n:'Кукуруза варёная', k:123, p:4.1, f:2.3, c:22.5, tags:['кукуруза','овощи'],
+   portions:[{l:'½ початка (100г)',g:100},{l:'1 початок (200г)',g:200}]},
+
   // Яндекс Лавка — готовая еда
   {n:'Боул с курицей (Яндекс Лавка)', k:130, p:12, f:5.5, c:9.5, tags:['боул','курица','лавка','яндекс лавка'],
    portions:[{l:'1 порция (300г)',g:300},{l:'1 порция (350г)',g:350}]},
@@ -1817,7 +1968,20 @@ function saveManual() {
 function updateAmount(id,val){
   const num=parseFloat(val);
   if(isNaN(num)||num<=0)return;
-  (state.log[state.activeDay]||[]).forEach(e=>{ if(e.id===id) e.amount=num; });
+  (state.log[state.activeDay]||[]).forEach(e=>{
+    if(e.id===id){
+      if(e.perPortion && e.amount && e.amount > 0){
+        // Scale nutrition values proportionally
+        const ratio = num / e.amount;
+        e.kcal    = Math.round(e.kcal    * ratio * 10) / 10;
+        e.protein = Math.round(e.protein * ratio * 10) / 10;
+        e.fat     = Math.round(e.fat     * ratio * 10) / 10;
+        e.carbs   = Math.round(e.carbs   * ratio * 10) / 10;
+        if(e.fi) e.fi = Math.round(e.fi  * ratio * 10) / 10;
+      }
+      e.amount = num;
+    }
+  });
   saveState(); render();
 }
 function removeEntry(id){
@@ -2398,12 +2562,33 @@ function openPhotoManual(ocrText) {
 function showPhotoResult(e) {
   const el = document.getElementById('photoResult');
   document.getElementById('photoResultContent').innerHTML = `
-    <div class="photo-result-row"><span class="photo-result-label">Название</span><span class="photo-result-val">${e.name}</span></div>
-    <div class="photo-result-row"><span class="photo-result-label">Калории</span><span class="photo-result-val" style="color:var(--accent)">${e.kcal} ккал</span></div>
-    <div class="photo-result-row"><span class="photo-result-label">Белки</span><span class="photo-result-val" style="color:var(--blue)">${e.protein} г</span></div>
-    <div class="photo-result-row"><span class="photo-result-label">Жиры</span><span class="photo-result-val" style="color:var(--yellow)">${e.fat} г</span></div>
-    <div class="photo-result-row"><span class="photo-result-label">Углеводы</span><span class="photo-result-val" style="color:var(--green)">${e.carbs} г</span></div>
-    <div class="photo-result-row"><span class="photo-result-label">Порция</span><span class="photo-result-val">${e.amount} ${e.unit||'г'}</span></div>
+    <div style="font-size:11px;color:var(--text-3);margin-bottom:10px">Проверь и исправь если нужно</div>
+    <div class="photo-edit-row">
+      <label class="photo-edit-label">Название</label>
+      <input class="photo-edit-input photo-edit-wide" id="pe_name" value="${e.name}"/>
+    </div>
+    <div class="photo-edit-grid">
+      <div class="photo-edit-row">
+        <label class="photo-edit-label" style="color:var(--accent)">Калории</label>
+        <input class="photo-edit-input" id="pe_kcal" type="number" value="${e.kcal}"/>
+      </div>
+      <div class="photo-edit-row">
+        <label class="photo-edit-label" style="color:var(--blue)">Белки г</label>
+        <input class="photo-edit-input" id="pe_protein" type="number" value="${e.protein}"/>
+      </div>
+      <div class="photo-edit-row">
+        <label class="photo-edit-label" style="color:var(--yellow)">Жиры г</label>
+        <input class="photo-edit-input" id="pe_fat" type="number" value="${e.fat}"/>
+      </div>
+      <div class="photo-edit-row">
+        <label class="photo-edit-label" style="color:var(--green)">Углеводы г</label>
+        <input class="photo-edit-input" id="pe_carbs" type="number" value="${e.carbs}"/>
+      </div>
+      <div class="photo-edit-row">
+        <label class="photo-edit-label">Порция г</label>
+        <input class="photo-edit-input" id="pe_amount" type="number" value="${e.amount||100}"/>
+      </div>
+    </div>
     ${e.note ? `<div style="font-size:11px;color:var(--text-3);margin-top:6px">${e.note}</div>` : ''}
   `;
   el.style.display = 'block';
@@ -2411,6 +2596,16 @@ function showPhotoResult(e) {
 
 function confirmPhotoAdd() {
   if (!pendingPhotoEntry) return;
+  // Read from editable fields if they exist
+  const nameEl = document.getElementById('pe_name');
+  if (nameEl) {
+    pendingPhotoEntry.name   = nameEl.value.trim() || pendingPhotoEntry.name;
+    pendingPhotoEntry.kcal   = parseFloat(document.getElementById('pe_kcal').value)   || pendingPhotoEntry.kcal;
+    pendingPhotoEntry.protein= parseFloat(document.getElementById('pe_protein').value) || pendingPhotoEntry.protein;
+    pendingPhotoEntry.fat    = parseFloat(document.getElementById('pe_fat').value)    || pendingPhotoEntry.fat;
+    pendingPhotoEntry.carbs  = parseFloat(document.getElementById('pe_carbs').value)  || pendingPhotoEntry.carbs;
+    pendingPhotoEntry.amount = parseFloat(document.getElementById('pe_amount').value) || pendingPhotoEntry.amount;
+  }
   if (!state.log[state.activeDay]) state.log[state.activeDay] = [];
   state.log[state.activeDay].push(pendingPhotoEntry);
   saveCustomItem(pendingPhotoEntry);
