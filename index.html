@@ -1771,6 +1771,11 @@ const GOALS = { kcal:1400, protein:94, fat:52, carbs:139, fiber:25 };
 const STORAGE_KEY = 'kbju_v3';
 let state = { log:{}, activeDay: getTodayKey() };
 
+// AI hint state (declared up here because render() runs at top-level before the hint code below)
+let _aiHintTimer = null;   // debounce handle for the Claude call
+let _aiHintSig = null;     // signature of the state Claude last answered for (dedupe)
+let _aiHintReq = 0;        // request counter, guards against out-of-order responses
+
 function getTodayKey(){ return new Date().toISOString().split('T')[0]; }
 function formatDate(d){ return new Date(d+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'}); }
 function loadState(){
@@ -1924,7 +1929,7 @@ function pickCustomGrams(item) {
 function pickItemWithAmount(item, grams, unit, displayLabel) {
   document.getElementById('portionPicker').style.display = 'none';
   document.getElementById('foodInput').value = '';
-  const entry = { name: item.n, kcal: item.k, protein: item.p, fat: item.f, carbs: item.c, amount: grams, unit: unit, displayLabel: displayLabel||null, id: Date.now() };
+  const entry = { name: item.n, kcal: item.k, protein: item.p, fat: item.f, carbs: item.c, fi: item.fi||0, amount: grams, unit: unit, displayLabel: displayLabel||null, id: Date.now() };
   if (!state.log[state.activeDay]) state.log[state.activeDay] = [];
   state.log[state.activeDay].push(entry);
   saveState();
@@ -1993,7 +1998,7 @@ function renderTotals(){
   const t=getEntries().reduce((a,e)=>{
     const f = e.perPortion ? 1 : (e.amount||100)/100;
     a.kcal+=e.kcal*f; a.protein+=e.protein*f; a.fat+=e.fat*f; a.carbs+=e.carbs*f;
-    a.fiber+=(e.fi||0)*f;
+    a.fiber+=(e.fi||e.fiber||0)*f;
     return a;
   },{kcal:0,protein:0,fat:0,carbs:0,fiber:0});
   document.getElementById('tKcal').textContent=Math.round(t.kcal);
@@ -2139,63 +2144,116 @@ function renderWeekChart() {
 }
 
 // ── AI hint ─────────────────────────────────────────────
-function renderAiHint() {
-  const hintEl = document.getElementById('aiHint');
-  const textEl = document.getElementById('aiHintText');
-  const chipsEl = document.getElementById('aiHintChips');
-  const entries = getEntries();
-  if (entries.length === 0) { hintEl.style.display = 'none'; return; }
+// (debounce/cache state declared near GOALS, above the top-level render() call)
 
-  const t = entries.reduce((a, e) => {
-    const f = e.perPortion ? 1 : (e.amount||100)/100;
-    a.kcal += e.kcal*f; a.protein += e.protein*f; a.fat += e.fat*f; a.carbs += e.carbs*f; return a;
-  }, {kcal:0, protein:0, fat:0, carbs:0});
+function renderChips(chips) {
+  return (chips || []).map(name => {
+    const safe = String(name).replace(/'/g, "\\'");
+    return `<button class="ai-chip" onclick="quickSearch('${safe}')">${name}</button>`;
+  }).join('');
+}
 
+// Rule-based hint — shown instantly while Claude thinks, and as a fallback if the API fails
+function localHint(t) {
   const remKcal = Math.round(GOALS.kcal - t.kcal);
   const remP = Math.round(GOALS.protein - t.protein);
   const remF = Math.round(GOALS.fat - t.fat);
   const remC = Math.round(GOALS.carbs - t.carbs);
 
   if (remKcal <= 0) {
-    textEl.textContent = 'Дневная норма калорий выполнена 🎉 Если голодна — выбери что-то лёгкое: огурец, кефир или зелёный чай.';
-    chipsEl.innerHTML = '';
-    hintEl.style.display = 'block';
-    return;
+    return { text: 'Дневная норма калорий выполнена 🎉 Если голодна — выбери что-то лёгкое: огурец, кефир или зелёный чай.', chips: [] };
   }
-
-  // Determine what's most lacking
   const pPct = t.protein / GOALS.protein;
   const fPct = t.fat / GOALS.fat;
   const cPct = t.carbs / GOALS.carbs;
-
-  let hint = '';
-  let chips = [];
-
   const hour = new Date().getHours();
   const timeOfDay = hour < 12 ? 'утро' : hour < 16 ? 'день' : hour < 20 ? 'вечер' : 'поздний вечер';
 
-  if (timeOfDay === 'поздний вечер' && remKcal > 0) {
-    hint = `Осталось ${remKcal} ккал. Поздно есть тяжёлое — лучше лёгкий белок или кефир.`;
-    chips = ['Кефир 1%', 'Творог 0%', 'Греческий йогурт 0% (Danone)'];
+  if (timeOfDay === 'поздний вечер') {
+    return { text: `Осталось ${remKcal} ккал. Поздно есть тяжёлое — лучше лёгкий белок или кефир.`, chips: ['Кефир 1%', 'Творог 0%', 'Греческий йогурт 0% (Danone)'] };
   } else if (pPct < fPct && pPct < cPct) {
-    hint = `Белков маловато — осталось добрать ${remP}г. Хорошее время для куриной грудки, творога или яиц.`;
-    chips = ['Куриная грудка (варёная)', 'Творог 0%', 'Яйцо куриное целое', 'Греческий йогурт Fage 0%'];
+    return { text: `Белков маловато — осталось добрать ${remP}г. Хорошее время для куриной грудки, творога или яиц.`, chips: ['Куриная грудка (варёная)', 'Творог 0%', 'Яйцо куриное целое', 'Греческий йогурт Fage 0%'] };
   } else if (cPct < pPct && cPct < fPct && remKcal > 200) {
-    hint = `Углеводов ещё ${remC}г — добавь что-то сложное: гречку, овсянку или фрукты.`;
-    chips = ['Гречка варёная', 'Овсянка варёная', 'Яблоко', 'Банан'];
+    return { text: `Углеводов ещё ${remC}г — добавь что-то сложное: гречку, овсянку или фрукты.`, chips: ['Гречка варёная', 'Овсянка варёная', 'Яблоко', 'Банан'] };
   } else if (remKcal < 300) {
-    hint = `До нормы совсем немного — ${remKcal} ккал. Лёгкий перекус и готово.`;
-    chips = ['Яблоко', 'Творог 0%', 'Кефир 1%', 'Огурец'];
-  } else {
-    hint = `Остаток на ${timeOfDay}: ${remKcal} ккал · Б ${remP}г · Ж ${remF}г · У ${remC}г. Время для полноценного приёма пищи.`;
-    chips = ['Куриная грудка (варёная)', 'Гречка варёная', 'Лосось', 'Греческий йогурт 0% (Danone)'];
+    return { text: `До нормы совсем немного — ${remKcal} ккал. Лёгкий перекус и готово.`, chips: ['Яблоко', 'Творог 0%', 'Кефир 1%', 'Огурец'] };
   }
+  return { text: `Остаток на ${timeOfDay}: ${remKcal} ккал · Б ${remP}г · Ж ${remF}г · У ${remC}г. Время для полноценного приёма пищи.`, chips: ['Куриная грудка (варёная)', 'Гречка варёная', 'Лосось', 'Греческий йогурт 0% (Danone)'] };
+}
 
-  textEl.textContent = hint;
-  chipsEl.innerHTML = chips.map(name =>
-    `<button class="ai-chip" onclick="quickSearch('${name}')">${name}</button>`
-  ).join('');
+function renderAiHint() {
+  const hintEl = document.getElementById('aiHint');
+  const entries = getEntries();
+  if (entries.length === 0) { hintEl.style.display = 'none'; _aiHintSig = null; return; }
+
+  const t = entries.reduce((a, e) => {
+    const f = e.perPortion ? 1 : (e.amount||100)/100;
+    a.kcal += e.kcal*f; a.protein += e.protein*f; a.fat += e.fat*f; a.carbs += e.carbs*f;
+    a.fiber += (e.fi||e.fiber||0)*f;
+    return a;
+  }, {kcal:0, protein:0, fat:0, carbs:0, fiber:0});
+
+  // 1) instant rule-based hint
+  const local = localHint(t);
+  document.getElementById('aiHintText').textContent = local.text;
+  document.getElementById('aiHintChips').innerHTML = renderChips(local.chips);
   hintEl.style.display = 'block';
+
+  // 2) personalized hint from Claude (debounced + cached by меню+час)
+  scheduleClaudeHint(entries, t);
+}
+
+function scheduleClaudeHint(entries, t) {
+  const hourBucket = new Date().getHours();
+  const sig = JSON.stringify(entries.map(e => [e.name, e.amount||100, !!e.perPortion])) + '|' + hourBucket;
+  if (sig === _aiHintSig) return;   // already have a Claude hint for this exact state
+  clearTimeout(_aiHintTimer);
+  _aiHintTimer = setTimeout(() => fetchClaudeHint(entries, t, sig), 1200);
+}
+
+async function fetchClaudeHint(entries, t, sig) {
+  const reqId = ++_aiHintReq;
+  const hour = new Date().getHours();
+  const eaten = entries.map(e => {
+    const f = e.perPortion ? 1 : (e.amount||100)/100;
+    return `${e.name} — ${Math.round(e.kcal*f)} ккал (Б${Math.round(e.protein*f)}/Ж${Math.round(e.fat*f)}/У${Math.round(e.carbs*f)})`;
+  }).join('; ');
+
+  const userMsg =
+`Сейчас ${hour}:00. Цели на день: ${GOALS.kcal} ккал, белки ${GOALS.protein}г, жиры ${GOALS.fat}г, углеводы ${GOALS.carbs}г, клетчатка ${GOALS.fiber}г.
+Уже съедено: ${Math.round(t.kcal)} ккал, Б ${Math.round(t.protein)}г, Ж ${Math.round(t.fat)}г, У ${Math.round(t.carbs)}г, клетчатка ${Math.round(t.fiber)}г.
+Осталось добрать: ${Math.round(GOALS.kcal-t.kcal)} ккал, Б ${Math.round(GOALS.protein-t.protein)}г, Ж ${Math.round(GOALS.fat-t.fat)}г, У ${Math.round(GOALS.carbs-t.carbs)}г, клетчатка ${Math.round(GOALS.fiber-t.fiber)}г.
+Что уже съедено за день: ${eaten}.`;
+
+  try {
+    const res = await fetch('/api/claude', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 300,
+        system: `Ты — дружелюбный нутрициолог в трекере питания. По дневнику за день дай ОДИН короткий персональный совет на остаток дня на русском: 1–2 предложения, тёплый тон, обращение на «ты», конкретика без воды. Учитывай баланс БЖУ, недобор клетчатки и время суток (вечером советуй лёгкое и белковое, не тяжёлые углеводы). Затем предложи 3–4 конкретных продукта, которые помогут добрать недостающее. Верни ТОЛЬКО сырой JSON без markdown и без пояснений: {"hint":"текст совета","chips":["продукт 1","продукт 2","продукт 3"]}`,
+        messages: [{ role: 'user', content: userMsg }]
+      })
+    });
+    const data = await res.json();
+    if (data.type === 'error') throw new Error(data.error?.message || 'api error');
+    const block = (data.content || []).find(b => b.type === 'text');
+    if (!block) throw new Error('empty');
+    const match = block.text.trim().match(/\{[\s\S]*\}/);
+    if (!match) throw new Error('no json');
+    const parsed = JSON.parse(match[0]);
+
+    if (reqId !== _aiHintReq) return;          // a newer request superseded this one
+    if (getEntries().length === 0) return;     // day was cleared while we waited
+    if (parsed.hint) {
+      document.getElementById('aiHintText').textContent = parsed.hint;
+      document.getElementById('aiHintChips').innerHTML = renderChips(parsed.chips || []);
+      _aiHintSig = sig;                         // cache: don't re-ask for the same state
+    }
+  } catch(e) {
+    // silent — the rule-based hint is already on screen
+  }
 }
 
 function quickSearch(name) {
@@ -2339,8 +2397,8 @@ async function parseVoiceInput(text) {
         model: 'claude-sonnet-4-5',
         max_tokens: 400,
         system: `You calculate total КБЖУ for a recipe or dish described in Russian. Sum up all ingredients. Return ONLY raw JSON, no markdown:
-{"name":"название блюда на русском","kcal":0,"protein":0,"fat":0,"carbs":0,"amount":0,"unit":"г","note":"состав кратко"}
-amount = total weight of the dish in grams. All values are TOTAL for the dish (not per 100g).`,
+{"name":"название блюда на русском","kcal":0,"protein":0,"fat":0,"carbs":0,"fiber":0,"amount":0,"unit":"г","note":"состав кратко"}
+amount = total weight of the dish in grams. fiber = total dietary fiber in grams. All values are TOTAL for the dish (not per 100g).`,
         messages: [{ role: 'user', content: text }]
       })
     });
@@ -2445,8 +2503,8 @@ Other cases:
 - Nutrition label "на 100г" with no portion → amount=100, values as-is
 - Food photo without numbers → estimate total for typical portion
 
-Format: {"name":"название на русском","kcal":0,"protein":0,"fat":0,"carbs":0,"amount":0,"unit":"г","note":"заметка"}
-All numbers positive. name in Russian.`,
+Format: {"name":"название на русском","kcal":0,"protein":0,"fat":0,"carbs":0,"fiber":0,"amount":0,"unit":"г","note":"заметка"}
+All numbers positive. name in Russian. fiber = dietary fiber in grams for the whole serving (estimate if not shown, 0 if unknown).`,
         messages: [{
           role: 'user',
           content: [
